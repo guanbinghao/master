@@ -33,7 +33,7 @@
     </div>
     <!-- /.login-logo -->
     <div class="login-box-body">
-        <p class="login-box-msg">万事登录难</p>
+        <p class="login-box-msg">账户root@admin.com 密码123456 </p>
 
         <form action="{{ url('/admin/login') }}" method="post">
             {!! csrf_field() !!}
