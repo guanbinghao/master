@@ -8,13 +8,6 @@ use Illuminate\Database\Schema\Blueprint;
 class PostgresGrammar extends Grammar
 {
     /**
-     * If this Grammar supports schema changes wrapped in a transaction.
-     *
-     * @var bool
-     */
-    protected $transactions = true;
-
-    /**
      * The possible column modifiers.
      *
      * @var array
@@ -325,7 +318,7 @@ class PostgresGrammar extends Grammar
     }
 
     /**
-     * Create the column definition for an integer type.
+     * Create the column definition for a integer type.
      *
      * @param  \Illuminate\Support\Fluent  $column
      * @return string

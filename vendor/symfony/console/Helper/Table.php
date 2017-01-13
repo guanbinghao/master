@@ -107,7 +107,7 @@ class Table
      *
      * @param string $name The style name
      *
-     * @return TableStyle
+     * @return TableStyle A TableStyle instance
      */
     public static function getStyleDefinition($name)
     {
@@ -115,11 +115,11 @@ class Table
             self::$styles = self::initStyles();
         }
 
-        if (isset(self::$styles[$name])) {
-            return self::$styles[$name];
+        if (!self::$styles[$name]) {
+            throw new InvalidArgumentException(sprintf('Style "%s" is not defined.', $name));
         }
 
-        throw new InvalidArgumentException(sprintf('Style "%s" is not defined.', $name));
+        return self::$styles[$name];
     }
 
     /**
@@ -127,11 +127,17 @@ class Table
      *
      * @param TableStyle|string $name The style name or a TableStyle instance
      *
-     * @return $this
+     * @return Table
      */
     public function setStyle($name)
     {
-        $this->style = $this->resolveStyle($name);
+        if ($name instanceof TableStyle) {
+            $this->style = $name;
+        } elseif (isset(self::$styles[$name])) {
+            $this->style = self::$styles[$name];
+        } else {
+            throw new InvalidArgumentException(sprintf('Style "%s" is not defined.', $name));
+        }
 
         return $this;
     }
@@ -152,13 +158,19 @@ class Table
      * @param int               $columnIndex Column index
      * @param TableStyle|string $name        The style name or a TableStyle instance
      *
-     * @return $this
+     * @return Table
      */
     public function setColumnStyle($columnIndex, $name)
     {
         $columnIndex = intval($columnIndex);
 
-        $this->columnStyles[$columnIndex] = $this->resolveStyle($name);
+        if ($name instanceof TableStyle) {
+            $this->columnStyles[$columnIndex] = $name;
+        } elseif (isset(self::$styles[$name])) {
+            $this->columnStyles[$columnIndex] = self::$styles[$name];
+        } else {
+            throw new InvalidArgumentException(sprintf('Style "%s" is not defined.', $name));
+        }
 
         return $this;
     }
@@ -187,7 +199,7 @@ class Table
      * @param int $columnIndex Column index
      * @param int $width       Minimum column width in characters
      *
-     * @return $this
+     * @return Table
      */
     public function setColumnWidth($columnIndex, $width)
     {
@@ -201,7 +213,7 @@ class Table
      *
      * @param array $widths
      *
-     * @return $this
+     * @return Table
      */
     public function setColumnWidths(array $widths)
     {
@@ -688,18 +700,5 @@ class Table
             'compact' => $compact,
             'symfony-style-guide' => $styleGuide,
         );
-    }
-
-    private function resolveStyle($name)
-    {
-        if ($name instanceof TableStyle) {
-            return $name;
-        }
-
-        if (isset(self::$styles[$name])) {
-            return self::$styles[$name];
-        }
-
-        throw new InvalidArgumentException(sprintf('Style "%s" is not defined.', $name));
     }
 }

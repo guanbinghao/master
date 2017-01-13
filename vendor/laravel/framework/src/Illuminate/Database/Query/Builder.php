@@ -459,17 +459,14 @@ class Builder
      *
      * @param  bool  $value
      * @param  \Closure  $callback
-     * @param  \Closure  $default
      * @return \Illuminate\Database\Query\Builder
      */
-    public function when($value, $callback, $default = null)
+    public function when($value, $callback)
     {
         $builder = $this;
 
         if ($value) {
             $builder = call_user_func($callback, $builder);
-        } elseif ($default) {
-            $builder = call_user_func($default, $builder);
         }
 
         return $builder;
@@ -585,7 +582,7 @@ class Builder
     /**
      * Add an "or where" clause to the query.
      *
-     * @param  \Closure|string  $column
+     * @param  string  $column
      * @param  string  $operator
      * @param  mixed   $value
      * @return \Illuminate\Database\Query\Builder|static
@@ -912,11 +909,7 @@ class Builder
 
         $this->wheres[] = compact('type', 'column', 'values', 'boolean');
 
-        foreach ($values as $value) {
-            if (! $value instanceof Expression) {
-                $this->addBinding($value, 'where');
-            }
-        }
+        $this->addBinding($values, 'where');
 
         return $this;
     }
@@ -984,7 +977,7 @@ class Builder
     }
 
     /**
-     * Add an external sub-select to the query.
+     * Add a external sub-select to the query.
      *
      * @param  string   $column
      * @param  \Illuminate\Database\Query\Builder|static  $query
@@ -1663,7 +1656,7 @@ class Builder
 
         $total = $this->getCountForPagination($columns);
 
-        $results = $total ? $this->forPage($page, $perPage)->get($columns) : collect();
+        $results = $total ? $this->forPage($page, $perPage)->get($columns) : [];
 
         return new LengthAwarePaginator($results, $total, $perPage, $page, [
             'path' => Paginator::resolveCurrentPath(),
@@ -1730,7 +1723,7 @@ class Builder
     }
 
     /**
-     * Backup then remove some fields for the pagination count.
+     * Backup some fields for the pagination count.
      *
      * @return void
      */
@@ -1807,17 +1800,9 @@ class Builder
      */
     public function chunk($count, callable $callback)
     {
-        $page = 1;
+        $results = $this->forPage($page = 1, $count)->get();
 
-        do {
-            $results = $this->forPage($page, $count)->get();
-
-            $countResults = $results->count();
-
-            if ($countResults == 0) {
-                break;
-            }
-
+        while (! $results->isEmpty()) {
             // On each chunk result set, we will pass them to the callback and then let the
             // developer take care of everything within the callback, which allows us to
             // keep the memory low for spinning through large result sets for working.
@@ -1826,7 +1811,9 @@ class Builder
             }
 
             $page++;
-        } while ($countResults == $count);
+
+            $results = $this->forPage($page, $count)->get();
+        }
 
         return true;
     }
@@ -1842,27 +1829,21 @@ class Builder
      */
     public function chunkById($count, callable $callback, $column = 'id', $alias = null)
     {
+        $lastId = null;
+
         $alias = $alias ?: $column;
 
-        $lastId = 0;
+        $results = $this->forPageAfterId($count, 0, $column)->get();
 
-        do {
-            $clone = clone $this;
-
-            $results = $clone->forPageAfterId($count, $lastId, $column)->get();
-
-            $countResults = $results->count();
-
-            if ($countResults == 0) {
-                break;
-            }
-
+        while (! $results->isEmpty()) {
             if (call_user_func($callback, $results) === false) {
                 return false;
             }
 
             $lastId = $results->last()->{$alias};
-        } while ($countResults == $count);
+
+            $results = $this->forPageAfterId($count, $lastId, $column)->get();
+        }
 
         return true;
     }
@@ -1878,7 +1859,7 @@ class Builder
      */
     public function each(callable $callback, $count = 1000)
     {
-        if (empty($this->orders) && empty($this->unionOrders)) {
+        if (is_null($this->orders) && is_null($this->unionOrders)) {
             throw new RuntimeException('You must specify an orderBy clause when using the "each" function.');
         }
 
@@ -1999,9 +1980,7 @@ class Builder
      */
     public function sum($column)
     {
-        $result = $this->aggregate(__FUNCTION__, [$column]);
-
-        return $result ?: 0;
+        return $this->aggregate(__FUNCTION__, [$column]);
     }
 
     /**
@@ -2162,10 +2141,12 @@ class Builder
      */
     public function update(array $values)
     {
+        $bindings = array_values(array_merge($values, $this->getBindings()));
+
         $sql = $this->grammar->compileUpdate($this, $values);
 
         return $this->connection->update($sql, $this->cleanBindings(
-            $this->grammar->prepareBindingsForUpdate($this->bindings, $values)
+            $this->grammar->prepareBindingsForUpdate($bindings, $values)
         ));
     }
 
@@ -2182,7 +2163,7 @@ class Builder
             return $this->insert(array_merge($attributes, $values));
         }
 
-        return (bool) $this->take(1)->update($values);
+        return (bool) $this->where($attributes)->take(1)->update($values);
     }
 
     /**

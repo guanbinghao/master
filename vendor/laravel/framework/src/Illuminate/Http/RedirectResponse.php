@@ -6,7 +6,6 @@ use BadMethodCallException;
 use Illuminate\Support\Str;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
-use Illuminate\Support\Traits\Macroable;
 use Illuminate\Session\Store as SessionStore;
 use Illuminate\Contracts\Support\MessageProvider;
 use Symfony\Component\HttpFoundation\File\UploadedFile as SymfonyUploadedFile;
@@ -14,9 +13,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse as BaseRedirectResponse;
 
 class RedirectResponse extends BaseRedirectResponse
 {
-    use ResponseTrait, Macroable {
-        Macroable::__call as macroCall;
-    }
+    use ResponseTrait;
 
     /**
      * The request instance.
@@ -104,6 +101,7 @@ class RedirectResponse extends BaseRedirectResponse
     /**
      * Flash an array of input to the session.
      *
+     * @param  mixed  string
      * @return $this
      */
     public function onlyInput()
@@ -114,6 +112,7 @@ class RedirectResponse extends BaseRedirectResponse
     /**
      * Flash an array of input to the session.
      *
+     * @param  mixed  string
      * @return \Illuminate\Http\RedirectResponse
      */
     public function exceptInput()
@@ -207,10 +206,6 @@ class RedirectResponse extends BaseRedirectResponse
      */
     public function __call($method, $parameters)
     {
-        if (static::hasMacro($method)) {
-            return $this->macroCall($method, $parameters);
-        }
-
         if (Str::startsWith($method, 'with')) {
             return $this->with(Str::snake(substr($method, 4)), $parameters[0]);
         }

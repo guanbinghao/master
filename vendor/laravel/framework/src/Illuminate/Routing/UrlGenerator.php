@@ -179,8 +179,8 @@ class UrlGenerator implements UrlGeneratorContract
         $root = $this->getRootUrl($scheme);
 
         if (($queryPosition = strpos($path, '?')) !== false) {
-            $query = substr($path, $queryPosition);
-            $path = substr($path, 0, $queryPosition);
+            $query = mb_substr($path, $queryPosition);
+            $path = mb_substr($path, 0, $queryPosition);
         } else {
             $query = '';
         }
@@ -201,7 +201,7 @@ class UrlGenerator implements UrlGeneratorContract
     }
 
     /**
-     * Generate the URL to an application asset.
+     * Generate a URL to an application asset.
      *
      * @param  string  $path
      * @param  bool|null  $secure
@@ -222,7 +222,7 @@ class UrlGenerator implements UrlGeneratorContract
     }
 
     /**
-     * Generate the URL to an asset from a custom root domain such as CDN, etc.
+     * Generate a URL to an asset from a custom root domain such as CDN, etc.
      *
      * @param  string  $root
      * @param  string  $path
@@ -253,7 +253,7 @@ class UrlGenerator implements UrlGeneratorContract
     }
 
     /**
-     * Generate the URL to a secure asset.
+     * Generate a URL to a secure asset.
      *
      * @param  string  $path
      * @return string

@@ -8,22 +8,20 @@ use Illuminate\Support\Manager;
 use Nexmo\Client as NexmoClient;
 use Illuminate\Support\Collection;
 use GuzzleHttp\Client as HttpClient;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Bus\Dispatcher as Bus;
 use Nexmo\Client\Credentials\Basic as NexmoCredentials;
-use Illuminate\Database\Eloquent\Collection as ModelCollection;
 use Illuminate\Contracts\Notifications\Factory as FactoryContract;
 use Illuminate\Contracts\Notifications\Dispatcher as DispatcherContract;
 
 class ChannelManager extends Manager implements DispatcherContract, FactoryContract
 {
     /**
-     * The default channel used to deliver messages.
+     * The default channels used to deliver messages.
      *
-     * @var string
+     * @var array
      */
-    protected $defaultChannel = 'mail';
+    protected $defaultChannels = ['mail', 'database'];
 
     /**
      * Send the given notification to the given notifiable entities.
@@ -34,7 +32,9 @@ class ChannelManager extends Manager implements DispatcherContract, FactoryContr
      */
     public function send($notifiables, $notification)
     {
-        $notifiables = $this->formatNotifiables($notifiables);
+        if (! $notifiables instanceof Collection && ! is_array($notifiables)) {
+            $notifiables = [$notifiables];
+        }
 
         if ($notification instanceof ShouldQueue) {
             return $this->queueNotification($notifiables, $notification);
@@ -50,28 +50,26 @@ class ChannelManager extends Manager implements DispatcherContract, FactoryContr
      * @param  mixed  $notification
      * @return void
      */
-    public function sendNow($notifiables, $notification, array $channels = null)
+    public function sendNow($notifiables, $notification)
     {
-        $notifiables = $this->formatNotifiables($notifiables);
+        if (! $notifiables instanceof Collection && ! is_array($notifiables)) {
+            $notifiables = [$notifiables];
+        }
 
         $original = clone $notification;
 
         foreach ($notifiables as $notifiable) {
-            $notificationId = Uuid::uuid4()->toString();
+            $notification = clone $original;
 
-            $viaChannels = $channels ?: $notification->via($notifiable);
+            $notification->id = (string) Uuid::uuid4();
 
-            if (empty($viaChannels)) {
+            $channels = $notification->via($notifiable);
+
+            if (empty($channels)) {
                 continue;
             }
 
-            foreach ($viaChannels as $channel) {
-                $notification = clone $original;
-
-                if (! $notification->id) {
-                    $notification->id = $notificationId;
-                }
-
+            foreach ($channels as $channel) {
                 if (! $this->shouldSendNotification($notifiable, $notification, $channel)) {
                     continue;
                 }
@@ -104,49 +102,17 @@ class ChannelManager extends Manager implements DispatcherContract, FactoryContr
      * Queue the given notification instances.
      *
      * @param  mixed  $notifiables
-     * @param  array[\Illuminate\Notifications\Channels\Notification]  $notification
+     * @param  array[\Illuminate\Notifcations\Channels\Notification]  $notification
      * @return void
      */
     protected function queueNotification($notifiables, $notification)
     {
-        $notifiables = $this->formatNotifiables($notifiables);
-
-        $bus = $this->app->make(Bus::class);
-
-        $original = clone $notification;
-
-        foreach ($notifiables as $notifiable) {
-            $notificationId = Uuid::uuid4()->toString();
-
-            foreach ($notification->via($notifiable) as $channel) {
-                $notification = clone $original;
-
-                $notification->id = $notificationId;
-
-                $bus->dispatch(
-                    (new SendQueuedNotifications($this->formatNotifiables($notifiable), $notification, [$channel]))
-                            ->onConnection($notification->connection)
-                            ->onQueue($notification->queue)
-                            ->delay($notification->delay)
-                );
-            }
-        }
-    }
-
-    /**
-     * Format the notifiables into a Collection / array if necessary.
-     *
-     * @param  mixed  $notifiables
-     * @return ModelCollection|array
-     */
-    protected function formatNotifiables($notifiables)
-    {
-        if (! $notifiables instanceof Collection && ! is_array($notifiables)) {
-            return $notifiables instanceof Model
-                            ? new ModelCollection([$notifiables]) : [$notifiables];
-        }
-
-        return $notifiables;
+        $this->app->make(Bus::class)->dispatch(
+            (new SendQueuedNotifications($notifiables, $notification))
+                    ->onConnection($notification->connection)
+                    ->onQueue($notification->queue)
+                    ->delay($notification->delay)
+        );
     }
 
     /**
@@ -238,19 +204,19 @@ class ChannelManager extends Manager implements DispatcherContract, FactoryContr
     }
 
     /**
-     * Get the default channel driver name.
+     * Get the default channel driver names.
      *
-     * @return string
+     * @return array
      */
     public function getDefaultDriver()
     {
-        return $this->defaultChannel;
+        return $this->defaultChannels;
     }
 
     /**
-     * Get the default channel driver name.
+     * Get the default channel driver names.
      *
-     * @return string
+     * @return array
      */
     public function deliversVia()
     {
@@ -258,13 +224,13 @@ class ChannelManager extends Manager implements DispatcherContract, FactoryContr
     }
 
     /**
-     * Set the default channel driver name.
+     * Set the default channel driver names.
      *
-     * @param  string  $channel
+     * @param  array|string  $channels
      * @return void
      */
-    public function deliverVia($channel)
+    public function deliverVia($channels)
     {
-        $this->defaultChannel = $channel;
+        $this->defaultChannels = (array) $channels;
     }
 }

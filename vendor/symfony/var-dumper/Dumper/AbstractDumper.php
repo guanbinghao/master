@@ -119,16 +119,23 @@ abstract class AbstractDumper implements DataDumperInterface, DumperInterface
      */
     public function dump(Data $data, $output = null)
     {
+        $exception = null;
         if ($output) {
             $prevOutput = $this->setOutput($output);
         }
         try {
             $data->dump($this);
             $this->dumpLine(-1);
-        } finally {
-            if ($output) {
-                $this->setOutput($prevOutput);
-            }
+        } catch (\Exception $exception) {
+            // Re-thrown below
+        } catch (\Throwable $exception) {
+            // Re-thrown below
+        }
+        if ($output) {
+            $this->setOutput($prevOutput);
+        }
+        if (null !== $exception) {
+            throw $exception;
         }
     }
 
@@ -146,9 +153,8 @@ abstract class AbstractDumper implements DataDumperInterface, DumperInterface
     /**
      * Generic line dumper callback.
      *
-     * @param string $line      The line to write
-     * @param int    $depth     The recursive depth in the dumped structure
-     * @param string $indentPad The line indent pad
+     * @param string $line  The line to write
+     * @param int    $depth The recursive depth in the dumped structure
      */
     protected function echoLine($line, $depth, $indentPad)
     {

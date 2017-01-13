@@ -694,7 +694,6 @@ class PHPUnit_Framework_MockObject_Generator
         $cloneTemplate        = '';
         $isClass              = false;
         $isInterface          = false;
-        $isMultipleInterfaces = false;
 
         if (is_array($type)) {
             foreach ($type as $_type) {
@@ -706,8 +705,6 @@ class PHPUnit_Framework_MockObject_Generator
                         )
                     );
                 }
-
-                $isMultipleInterfaces = true;
 
                 $additionalInterfaces[] = $_type;
                 $typeClass              = new ReflectionClass($this->generateClassName(
@@ -836,7 +833,7 @@ class PHPUnit_Framework_MockObject_Generator
                     );
                 }
             }
-        } elseif ($isMultipleInterfaces) {
+        } else {
             foreach ($methods as $methodName) {
                 if ($this->canMockMethod($methodReflections[$methodName])) {
                     $mockedMethods .= $this->generateMockedMethodDefinitionFromExisting(
@@ -846,15 +843,6 @@ class PHPUnit_Framework_MockObject_Generator
                         $callOriginalMethods
                     );
                 }
-            }
-        } else {
-            foreach ($methods as $methodName) {
-                $mockedMethods .= $this->generateMockedMethodDefinition(
-                    $templateDir,
-                    $mockClassName['fullClassName'],
-                    $methodName,
-                    $cloneArguments
-                );
             }
         }
 
@@ -1027,8 +1015,7 @@ class PHPUnit_Framework_MockObject_Generator
             $reference,
             $callOriginalMethods,
             $method->isStatic(),
-            $deprecation,
-            $this->allowsReturnNull($method)
+            $deprecation
         );
     }
 
@@ -1045,26 +1032,18 @@ class PHPUnit_Framework_MockObject_Generator
      * @param bool         $callOriginalMethods
      * @param bool         $static
      * @param string|false $deprecation
-     * @param bool         $allowsReturnNull
      *
      * @return string
      */
-    private function generateMockedMethodDefinition($templateDir, $className, $methodName, $cloneArguments = true, $modifier = 'public', $arguments_decl = '', $arguments_call = '', $return_type = '', $reference = '', $callOriginalMethods = false, $static = false, $deprecation = false, $allowsReturnNull = false)
+    private function generateMockedMethodDefinition($templateDir, $className, $methodName, $cloneArguments = true, $modifier = 'public', $arguments_decl = '', $arguments_call = '', $return_type = '', $reference = '', $callOriginalMethods = false, $static = false, $deprecation = false)
     {
         if ($static) {
             $templateFile = 'mocked_static_method.tpl';
         } else {
-            if ($return_type === 'void') {
-                $templateFile = sprintf(
-                    '%s_method_void.tpl',
-                    $callOriginalMethods ? 'proxied' : 'mocked'
-                );
-            } else {
-                $templateFile = sprintf(
-                    '%s_method.tpl',
-                    $callOriginalMethods ? 'proxied' : 'mocked'
-                );
-            }
+            $templateFile = sprintf(
+                '%s_method.tpl',
+                $callOriginalMethods ? 'proxied' : 'mocked'
+            );
         }
 
         // Mocked interfaces returning 'self' must explicitly declare the
@@ -1094,7 +1073,7 @@ class PHPUnit_Framework_MockObject_Generator
                 'arguments_decl'  => $arguments_decl,
                 'arguments_call'  => $arguments_call,
                 'return_delim'    => $return_type ? ': ' : '',
-                'return_type'     => $allowsReturnNull ? '?' . $return_type : $return_type,
+                'return_type'     => $return_type,
                 'arguments_count' => !empty($arguments_call) ? count(explode(',', $arguments_call)) : 0,
                 'class_name'      => $className,
                 'method_name'     => $methodName,
@@ -1181,17 +1160,12 @@ class PHPUnit_Framework_MockObject_Generator
                 }
             }
 
-            $nullable        = '';
             $default         = '';
             $reference       = '';
             $typeDeclaration = '';
 
             if (!$forCall) {
                 if ($this->hasType($parameter) && (string) $parameter->getType() !== 'self') {
-                    if (version_compare(PHP_VERSION, '7.1', '>=') && $parameter->allowsNull() && !$parameter->isVariadic()) {
-                        $nullable = '?';
-                    }
-
                     $typeDeclaration = (string) $parameter->getType() . ' ';
                 } elseif ($parameter->isArray()) {
                     $typeDeclaration = 'array ';
@@ -1232,7 +1206,7 @@ class PHPUnit_Framework_MockObject_Generator
                 $reference = '&';
             }
 
-            $parameters[] = $nullable . $typeDeclaration . $reference . $name . $default;
+            $parameters[] = $typeDeclaration . $reference . $name . $default;
         }
 
         return implode(', ', $parameters);
@@ -1270,19 +1244,6 @@ class PHPUnit_Framework_MockObject_Generator
     private function hasReturnType(ReflectionMethod $method)
     {
         return method_exists(ReflectionMethod::class, 'hasReturnType') && $method->hasReturnType();
-    }
-
-    /**
-     * @param ReflectionMethod $method
-     *
-     * @return bool
-     */
-    private function allowsReturnNull(ReflectionMethod $method)
-    {
-        return method_exists(ReflectionMethod::class, 'getReturnType')
-            && method_exists(ReflectionType::class, 'allowsNull')
-            && $method->hasReturnType()
-            && $method->getReturnType()->allowsNull();
     }
 
     /**

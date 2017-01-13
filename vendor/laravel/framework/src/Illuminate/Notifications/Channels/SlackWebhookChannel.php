@@ -6,7 +6,6 @@ use GuzzleHttp\Client as HttpClient;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\SlackMessage;
 use Illuminate\Notifications\Messages\SlackAttachment;
-use Illuminate\Notifications\Messages\SlackAttachmentField;
 
 class SlackWebhookChannel
 {
@@ -43,29 +42,12 @@ class SlackWebhookChannel
 
         $message = $notification->toSlack($notifiable);
 
-        $this->http->post($url, $this->buildJsonPayload($message));
-    }
-
-    /**
-     * Build up a JSON payload for the Slack webhook.
-     *
-     * @param  \Illuminate\Notifications\Messages\SlackMessage  $message
-     * @return array
-     */
-    protected function buildJsonPayload(SlackMessage $message)
-    {
-        $optionalFields = array_filter([
-            'username' => data_get($message, 'username'),
-            'icon_emoji' => data_get($message, 'icon'),
-            'channel' => data_get($message, 'channel'),
-        ]);
-
-        return array_merge([
-            'json' => array_merge([
+        return $this->http->post($url, [
+            'json' => [
                 'text' => $message->content,
                 'attachments' => $this->attachments($message),
-            ], $optionalFields),
-        ], $message->http);
+            ],
+        ]);
     }
 
     /**
@@ -78,16 +60,11 @@ class SlackWebhookChannel
     {
         return collect($message->attachments)->map(function ($attachment) use ($message) {
             return array_filter([
-                'color' => $attachment->color ?: $message->color(),
+                'color' => $message->color(),
                 'title' => $attachment->title,
                 'text' => $attachment->content,
-                'fallback' => $attachment->fallback,
                 'title_link' => $attachment->url,
                 'fields' => $this->fields($attachment),
-                'mrkdwn_in' => $attachment->markdown,
-                'footer' => $attachment->footer,
-                'footer_icon' => $attachment->footerIcon,
-                'ts' => $attachment->timestamp,
             ]);
         })->all();
     }
@@ -101,10 +78,6 @@ class SlackWebhookChannel
     protected function fields(SlackAttachment $attachment)
     {
         return collect($attachment->fields)->map(function ($value, $key) {
-            if ($value instanceof SlackAttachmentField) {
-                return $value->toArray();
-            }
-
             return ['title' => $key, 'value' => $value, 'short' => true];
         })->values()->all();
     }

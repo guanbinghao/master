@@ -15,8 +15,8 @@ use Illuminate\Routing\Matching\UriValidator;
 use Illuminate\Routing\Matching\HostValidator;
 use Illuminate\Routing\Matching\MethodValidator;
 use Illuminate\Routing\Matching\SchemeValidator;
-use Illuminate\Http\Exception\HttpResponseException;
 use Symfony\Component\Routing\Route as SymfonyRoute;
+use Illuminate\Http\Exception\HttpResponseException;
 
 class Route
 {
@@ -195,7 +195,7 @@ class Route
      *
      * @return mixed
      */
-    public function getController()
+    protected function getController()
     {
         list($class) = explode('@', $this->action['uses']);
 
@@ -275,7 +275,7 @@ class Route
      */
     public function gatherMiddleware()
     {
-        return array_unique(array_merge($this->middleware(), $this->controllerMiddleware()), SORT_REGULAR);
+        return array_merge($this->middleware(), $this->controllerMiddleware());
     }
 
     /**
@@ -666,8 +666,8 @@ class Route
         // validator implementations. We will spin through each one making sure it
         // passes and then we will know if the route as a whole matches request.
         return static::$validators = [
-            new UriValidator, new MethodValidator,
-            new SchemeValidator, new HostValidator,
+            new MethodValidator, new SchemeValidator,
+            new HostValidator, new UriValidator,
         ];
     }
 
@@ -820,8 +820,7 @@ class Route
      */
     public function domain()
     {
-        return isset($this->action['domain'])
-                ? str_replace(['http://', 'https://'], '', $this->action['domain']) : null;
+        return isset($this->action['domain']) ? $this->action['domain'] : null;
     }
 
     /**

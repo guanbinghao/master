@@ -3,7 +3,6 @@
 namespace Illuminate\Routing\Middleware;
 
 use Closure;
-use Carbon\Carbon;
 use Illuminate\Cache\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -103,7 +102,6 @@ class ThrottleRequests
 
         if (! is_null($retryAfter)) {
             $headers['Retry-After'] = $retryAfter;
-            $headers['X-RateLimit-Reset'] = Carbon::now()->getTimestamp() + $retryAfter;
         }
 
         $response->headers->add($headers);

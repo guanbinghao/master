@@ -3,9 +3,7 @@
 namespace Illuminate\Queue;
 
 use DateTime;
-use Carbon\Carbon;
 use Illuminate\Support\Arr;
-use InvalidArgumentException;
 use Illuminate\Container\Container;
 
 abstract class Queue
@@ -73,28 +71,20 @@ abstract class Queue
      * @param  mixed   $data
      * @param  string  $queue
      * @return string
-     *
-     * @throws \InvalidArgumentException
      */
     protected function createPayload($job, $data = '', $queue = null)
     {
         if (is_object($job)) {
-            $payload = json_encode([
+            return json_encode([
                 'job' => 'Illuminate\Queue\CallQueuedHandler@call',
                 'data' => [
                     'commandName' => get_class($job),
                     'command' => serialize(clone $job),
                 ],
             ]);
-        } else {
-            $payload = json_encode($this->createPlainPayload($job, $data));
         }
 
-        if (JSON_ERROR_NONE !== json_last_error()) {
-            throw new InvalidArgumentException('Unable to create payload: '.json_last_error_msg());
-        }
-
-        return $payload;
+        return json_encode($this->createPlainPayload($job, $data));
     }
 
     /**
@@ -116,20 +106,12 @@ abstract class Queue
      * @param  string  $key
      * @param  string  $value
      * @return string
-     *
-     * @throws \InvalidArgumentException
      */
     protected function setMeta($payload, $key, $value)
     {
         $payload = json_decode($payload, true);
 
-        $payload = json_encode(Arr::set($payload, $key, $value));
-
-        if (JSON_ERROR_NONE !== json_last_error()) {
-            throw new InvalidArgumentException('Unable to create payload: '.json_last_error_msg());
-        }
-
-        return $payload;
+        return json_encode(Arr::set($payload, $key, $value));
     }
 
     /**
@@ -154,7 +136,7 @@ abstract class Queue
      */
     protected function getTime()
     {
-        return Carbon::now()->getTimestamp();
+        return time();
     }
 
     /**

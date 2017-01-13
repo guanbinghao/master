@@ -134,13 +134,7 @@ class Arr
     public static function first($array, callable $callback = null, $default = null)
     {
         if (is_null($callback)) {
-            if (empty($array)) {
-                return value($default);
-            }
-
-            foreach ($array as $item) {
-                return $item;
-            }
+            return empty($array) ? value($default) : reset($array);
         }
 
         foreach ($array as $key => $value) {
@@ -458,26 +452,13 @@ class Arr
     }
 
     /**
-     * Shuffle the given array and return the result.
+     * Sort the array using the given callback.
      *
      * @param  array  $array
+     * @param  callable  $callback
      * @return array
      */
-    public static function shuffle($array)
-    {
-        shuffle($array);
-
-        return $array;
-    }
-
-    /**
-     * Sort the array using the given callback or "dot" notation.
-     *
-     * @param  array  $array
-     * @param  callable|string  $callback
-     * @return array
-     */
-    public static function sort($array, $callback)
+    public static function sort($array, callable $callback)
     {
         return Collection::make($array)->sortBy($callback)->all();
     }

@@ -4,7 +4,6 @@ namespace Illuminate\Mail;
 
 use ReflectionClass;
 use ReflectionProperty;
-use BadMethodCallException;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use Illuminate\Container\Container;
@@ -19,84 +18,84 @@ class Mailable implements MailableContract
      *
      * @var array
      */
-    public $from = [];
+    protected $from = [];
 
     /**
      * The "to" recipients of the message.
      *
      * @var array
      */
-    public $to = [];
+    protected $to = [];
 
     /**
      * The "cc" recipients of the message.
      *
      * @var array
      */
-    public $cc = [];
+    protected $cc = [];
 
     /**
      * The "bcc" recipients of the message.
      *
      * @var array
      */
-    public $bcc = [];
+    protected $bcc = [];
 
     /**
      * The "reply to" recipients of the message.
      *
      * @var array
      */
-    public $replyTo = [];
+    protected $replyTo = [];
 
     /**
      * The subject of the message.
      *
      * @var string
      */
-    public $subject;
+    protected $subject;
 
     /**
      * The view to use for the message.
      *
      * @var string
      */
-    public $view;
+    protected $view;
 
     /**
      * The plain text view to use for the message.
      *
      * @var string
      */
-    public $textView;
+    protected $textView;
 
     /**
      * The view data for the message.
      *
      * @var array
      */
-    public $viewData = [];
+    protected $viewData = [];
 
     /**
      * The attachments for the message.
      *
      * @var array
      */
-    public $attachments = [];
+    protected $attachments = [];
 
     /**
      * The raw attachments for the message.
      *
      * @var array
      */
-    public $rawAttachments = [];
+    protected $rawAttachments = [];
 
     /**
      * The callbacks for the message.
      *
      * @var array
      */
-    public $callbacks = [];
+    protected $callbacks = [];
 
     /**
      * Send the message using the given mailer.
@@ -185,14 +184,12 @@ class Mailable implements MailableContract
      *
      * @return array
      */
-    public function buildViewData()
+    protected function buildViewData()
     {
         $data = $this->viewData;
 
         foreach ((new ReflectionClass($this))->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
-            if ($property->getDeclaringClass()->getName() != self::class) {
-                $data[$property->getName()] = $property->getValue($this);
-            }
+            $data[$property->getName()] = $property->getValue($this);
         }
 
         return $data;
@@ -284,23 +281,6 @@ class Mailable implements MailableContract
     }
 
     /**
-     * Set the priority of this message.
-     *
-     * The value is an integer where 1 is the highest priority and 5 is the lowest.
-     *
-     * @param  int  $level
-     * @return $this
-     */
-    public function priority($level = 3)
-    {
-        $this->callbacks[] = function ($message) use ($level) {
-            $message->setPriority($level);
-        };
-
-        return $this;
-    }
-
-    /**
      * Set the sender of the message.
      *
      * @param  object|array|string  $address
@@ -376,32 +356,13 @@ class Mailable implements MailableContract
 
         if ($address instanceof Collection || is_array($address)) {
             foreach ($address as $user) {
-                $user = $this->parseUser($user);
-
-                $this->{$property}($user->email, isset($user->name) ? $user->name : null);
+                $this->{$property}($user->email, $user->name);
             }
         } else {
             $this->{$property}[] = compact('address', 'name');
         }
 
         return $this;
-    }
-
-    /**
-     * Parse the given user into an object.
-     *
-     * @param  mixed  $user
-     * @return object
-     */
-    protected function parseUser($user)
-    {
-        if (is_array($user)) {
-            return (object) $user;
-        } elseif (is_string($user)) {
-            return (object) ['email' => $user];
-        }
-
-        return $user;
     }
 
     /**
@@ -505,23 +466,5 @@ class Mailable implements MailableContract
         $this->callbacks[] = $callback;
 
         return $this;
-    }
-
-    /**
-     * Dynamically bind parameters to the message.
-     *
-     * @param  string  $method
-     * @param  array   $parameters
-     * @return $this
-     *
-     * @throws \BadMethodCallException
-     */
-    public function __call($method, $parameters)
-    {
-        if (Str::startsWith($method, 'with')) {
-            return $this->with(Str::snake(substr($method, 4)), $parameters[0]);
-        }
-
-        throw new BadMethodCallException("Method [$method] does not exist on mailable.");
     }
 }

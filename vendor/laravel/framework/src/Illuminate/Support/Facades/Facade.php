@@ -62,6 +62,7 @@ abstract class Facade
     /**
      * Initiate a mock expectation on the facade.
      *
+     * @param  mixed
      * @return \Mockery\Expectation
      */
     public static function shouldReceive()
@@ -100,7 +101,7 @@ abstract class Facade
      * Create a fresh mock instance for the given class.
      *
      * @param  string  $name
-     * @return \Mockery\MockInterface
+     * @return \Mockery\Expectation
      */
     protected static function createMockByName($name)
     {
